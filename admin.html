@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Evaluation Template Configuration</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ... (Estilos anteriores para .saved-template, etc.) ... */
+        #templateDefinition, #templateSteps { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; background-color: #f9f9f9; }
+        #savedTemplatesList ul { list-style: none; padding-left: 0; }
+        #savedTemplatesList li { border: 1px solid #eee; margin-bottom: 10px; padding: 10px; }
+        #savedTemplatesList h4 { margin-top: 0; color: #333; }
+        #savedTemplatesList button { margin-left: 10px; font-size: 0.8em; padding: 2px 5px; }
+
+        /* Estilo para la nueva tabla de pasos actuales */
+        #currentStepsTableContainer table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+         #currentStepsTableContainer th,
+         #currentStepsTableContainer td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            text-align: left;
+         }
+          #currentStepsTableContainer th {
+            background-color: #f2f2f2;
+          }
+          #currentStepsTableContainer button {
+              font-size: 0.85em;
+              padding: 2px 6px;
+          }
+    </style>
+</head>
+<body>
+    <h1>Evaluation Template Configuration</h1>
+
+    <div id="templateDefinition">
+        <h2>Define/Edit Template</h2>
+        <div>
+            <label for="templateAccount">Account:</label>
+            <input type="text" id="templateAccount" placeholder="e.g., CuentaA">
+            <label for="templateInteractionType">Interaction Type:</label>
+            <input type="text" id="templateInteractionType" placeholder="e.g., Tipo1">
+            <button id="loadOrStartTemplateButton">Load/Start Editing Template</button>
+        </div>
+
+        <div id="templateSteps" style="display: none;">
+            <h3>Steps for Template: <span id="currentTemplateKeyDisplay"></span></h3>
+            <input type="text" id="stepCategory" placeholder="Step Category">
+            <input type="text" id="stepName" placeholder="Step Name">
+            <button id="addStepToTemplateButton">Add Step to Current Template</button>
+
+            <h4>Current Steps in Template:</h4>
+            <div id="currentStepsTableContainer">
+            </div>
+            <br>
+            <button id="saveTemplateButton">Save Current Template</button>
+            <button id="cancelEditButton">Cancel Edit</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="savedTemplatesList">
+        <h2>Saved Templates</h2>
+        <div id="templatesDisplayArea">
+        </div>
+    </div>
+
+     <p><a href="user.html">Go to User Interface</a></p>
+
+    <script src="admin.js"></script>
+</body>
+</html>

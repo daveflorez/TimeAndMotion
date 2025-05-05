@@ -1,0 +1,19 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+#adminSection, #basicInfo, #timerSection {
+    margin-bottom: 20px;
+}
+
+input, select {
+    margin-right: 5px;
+}
+
+#stepList {
+    margin-top: 20px;
+}
+
+.step {
+    margin: 5px 0;
+}
