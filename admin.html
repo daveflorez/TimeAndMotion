@@ -13,14 +13,14 @@
         button { padding: 6px 12px; font-size: 0.9em; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #f7f7f7; margin-right: 5px; margin-bottom: 5px;}
         button:disabled { cursor: not-allowed; opacity: 0.6; }
         button:hover:not(:disabled) { background-color: #e9e9e9; }
-        input[type="text"], select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; margin-right: 5px; margin-bottom: 5px; }
+        input[type="text"], select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; margin-right: 5px; margin-bottom: 5px; box-sizing: border-box; }
         label { margin-bottom: 3px; font-weight: bold; font-size: 0.85em; color: #333; display: inline-block; margin-right: 5px;}
 
         /* Secciones principales */
-        #templateDefinition, #savedTemplatesList, #behaviorManagement {
+        #templateDefinition, #savedTemplatesList, #behaviorManagement, #configManagement { /* Added #configManagement */
              border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; background-color: #f9f9f9; border-radius: 5px;
         }
-         #templateDefinition h2, #savedTemplatesList h2, #behaviorManagement h2 { margin-top: 0; }
+         #templateDefinition h2, #savedTemplatesList h2, #behaviorManagement h2, #configManagement h2 { margin-top: 0; }
 
         /* Sección de Edición de Plantilla */
         #templateSteps { margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;}
@@ -51,10 +51,10 @@
         .saved-template li { margin-bottom: 3px; }
         .saved-template button { font-size: 0.8em; padding: 2px 5px; margin-left: 5px;}
 
-        /* --- ESTILOS PARA LA NUEVA TABLA DE BEHAVIORS --- */
+        /* Estilos para la tabla de Behaviors */
         #currentBehaviorsList table {
             width: 100%;
-            max-width: 600px; /* Ajusta según necesidad */
+            max-width: 600px;
             border-collapse: collapse;
             margin-top: 10px;
         }
@@ -66,36 +66,60 @@
             vertical-align: middle;
         }
         #currentBehaviorsList th { background-color: #f2f2f2; }
-        #currentBehaviorsList .behavior-text { /* Texto clickeable */
-            cursor: pointer;
-            display: inline-block;
-            padding: 2px 4px;
-            border-radius: 3px;
-            transition: background-color 0.2s ease;
+        #currentBehaviorsList .behavior-text {
+            cursor: pointer; display: inline-block; padding: 2px 4px; border-radius: 3px; transition: background-color 0.2s ease;
         }
         #currentBehaviorsList .behavior-text:hover { background-color: #eef; }
-        #currentBehaviorsList .actions-cell { /* Celda de acciones */
-            white-space: nowrap;
-            width: 1%; /* Intentar que sea estrecha */
-            text-align: right;
+        #currentBehaviorsList .actions-cell {
+            white-space: nowrap; width: 1%; text-align: right;
         }
         #currentBehaviorsList .actions-cell button {
-            margin-left: 5px;
+            margin-left: 5px; font-size: 0.85em; padding: 3px 6px;
+        }
+        #currentBehaviorsList input[type="text"].edit-behavior-input {
+            width: calc(100% - 12px); padding: 5px; font-size: 1em; box-sizing: border-box;
+        }
+
+        /* --- Estilos para la sección de Import/Export --- */
+        #configManagement {
+            border-color: #007bff; /* Borde azul para destacar */
+            background-color: #f0f8ff; /* Fondo azul claro */
+        }
+        #configManagement h2 {
+            color: #0056b3; /* Texto azul oscuro */
+        }
+        #configManagement button {
+             background-color: #007bff;
+             color: white;
+             border-color: #0056b3;
+        }
+         #configManagement button:hover:not(:disabled) {
+             background-color: #0056b3;
+         }
+         #configManagement p {
             font-size: 0.85em;
-            padding: 3px 6px;
-        }
-        #currentBehaviorsList input[type="text"].edit-behavior-input { /* Input de edición */
-            width: calc(100% - 12px); /* Ocupar casi todo el espacio de la celda */
-            padding: 5px;
-            font-size: 1em; /* Heredar tamaño de celda */
-            box-sizing: border-box; /* Incluir padding en el ancho */
-        }
-        /* -------------------------------------------- */
+            margin-top: 8px;
+            color: #333;
+         }
+         /* -------------------------------------------- */
+
+        /* Footer link */
+        .footer-link { margin-top: 30px; display: block; text-align: center; }
 
     </style>
 </head>
 <body>
     <h1>Evaluation Template Configuration</h1>
+
+    <!-- Sección para Import/Export -->
+    <div id="configManagement">
+        <h2>Configuration Management</h2>
+        <button id="exportConfigButton">Export Configuration (JSON)</button>
+        <button id="importConfigButton">Import Configuration (JSON)</button>
+        <!-- Input oculto para seleccionar el archivo -->
+        <input type="file" id="importConfigFile" accept=".json" style="display: none;">
+        <p>Export templates and behaviors to a JSON file, or import a previously saved file to overwrite current settings.</p>
+    </div>
 
     <!-- Sección para Definir/Editar Plantillas -->
     <div id="templateDefinition">
@@ -154,7 +178,7 @@
         </div>
     </div>
 
-     <p><a href="user.html">Go to User Interface</a></p>
+     <p class="footer-link"><a href="user.html">Go to User Interface</a></p>
 
     <script src="admin.js"></script>
 </body>

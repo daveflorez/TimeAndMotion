@@ -1,4 +1,4 @@
-// script.js - v13 Added Optional Sentiment per Step
+// script.js - v14 User Import & Step Reset Added
 
 // --- Variables Globales ---
 let steps = []; // Array de objetos: { name, category, account, interactionType, elapsedTime, startTime, isRunning, sentiment }
@@ -18,7 +18,40 @@ const escapeCSV = (field) => { const str = String(field === null || field === un
 function formatTime(elapsedTime) { const totalMilliseconds = Math.max(0, Math.floor(elapsedTime)); const totalSeconds = Math.floor(totalMilliseconds / 1000); const minutes = Math.floor(totalSeconds / 60); const seconds = totalSeconds % 60; const hundredths = Math.floor((totalMilliseconds % 1000) / 10); return `${padZero(minutes)}:${padZero(seconds)}.${padZero(hundredths)}`; }
 function padZero(num) { return num.toString().padStart(2, '0'); }
 
-// --- Funciones de Inicialización ---
+// --- Funciones Auxiliares para GUARDAR CONFIG (necesarias para Import) ---
+function saveEvaluationTemplates(templates) {
+     if (typeof templates !== 'object' || templates === null || Array.isArray(templates)) {
+        console.error("Attempted to save invalid data type as templates:", templates);
+        alert("Error: Invalid data format for templates. Cannot save.");
+        return false; // Indicar fallo
+     }
+    try {
+        localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
+        return true; // Indicar éxito
+    } catch (e) {
+         console.error("Error saving templates:", e); alert("Error saving templates.");
+         return false; // Indicar fallo
+    }
+}
+
+function saveBehaviors(behaviors) {
+    if (!Array.isArray(behaviors)) {
+        console.error("Invalid data type for behaviors", behaviors);
+        alert("Error: Invalid data format for behaviors. Cannot save.");
+         return false; // Indicar fallo
+    }
+    try {
+        localStorage.setItem(BEHAVIOR_STORAGE_KEY, JSON.stringify(behaviors));
+        return true; // Indicar éxito
+    } catch (e) {
+        console.error("Error saving behaviors:", e); alert("Error saving behaviors.");
+        return false; // Indicar fallo
+    }
+}
+// --- FIN FUNCIONES AUXILIARES GUARDAR CONFIG ---
+
+
+// --- Funciones de Inicialización y UI ---
 function populateBehaviorDropdown() {
     const behaviorIdentifiedSelect = document.getElementById("behaviorIdentified");
     if (!behaviorIdentifiedSelect) { console.error("Behavior dropdown not found!"); return; }
@@ -30,7 +63,7 @@ function populateBehaviorDropdown() {
              behaviorList = [];
         }
         behaviorIdentifiedSelect.innerHTML = '<option value="">-- Select Behavior --</option>'; // Reset
-        behaviorList.forEach(behavior => {
+        behaviorList.sort((a,b) => a.localeCompare(b)).forEach(behavior => { // Ordenar al poblar
             const option = document.createElement('option');
             option.value = behavior;
             option.textContent = behavior;
@@ -47,7 +80,7 @@ function populateAccountDropdown() {
     const accountSelect = document.getElementById('accountSelect');
     if (!accountSelect) return;
     const templates = getEvaluationTemplates();
-    const accounts = [...new Set(Object.keys(templates).map(key => key.split('::')[0]))].filter(Boolean); // Evita nulos/undefined
+    const accounts = [...new Set(Object.keys(templates).map(key => key.split('::')[0]))].filter(Boolean);
     accountSelect.innerHTML = '<option value="">-- Select Account --</option>'; // Reset
     accounts.sort().forEach(acc => {
         const option = document.createElement('option');
@@ -55,6 +88,13 @@ function populateAccountDropdown() {
         option.textContent = acc;
         accountSelect.appendChild(option);
     });
+    // Resetear Interaction Type si se repuebla Account
+    const interactionTypeSelect = document.getElementById('interactionTypeSelect');
+     if(interactionTypeSelect) {
+         interactionTypeSelect.innerHTML = '<option value="">-- Select Interaction Type --</option>';
+         interactionTypeSelect.disabled = true;
+         document.getElementById('loadStepsButton').disabled = true;
+     }
 }
 
 function populateInteractionTypeDropdown(selectedAccount) {
@@ -62,7 +102,7 @@ function populateInteractionTypeDropdown(selectedAccount) {
     const loadButton = document.getElementById('loadStepsButton');
     if (!interactionTypeSelect || !loadButton) return;
 
-    interactionTypeSelect.innerHTML = '<option value="">-- Select Interaction Type --</option>'; // Reset
+    interactionTypeSelect.innerHTML = '<option value="">-- Select Interaction Type --</option>';
     interactionTypeSelect.disabled = true;
     loadButton.disabled = true;
 
@@ -72,7 +112,7 @@ function populateInteractionTypeDropdown(selectedAccount) {
     const interactionTypes = Object.keys(templates)
         .filter(key => key.startsWith(selectedAccount + '::'))
         .map(key => key.split('::')[1])
-        .filter(Boolean); // Filtrar tipos vacíos o undefined
+        .filter(Boolean);
 
     if (interactionTypes.length > 0) {
         interactionTypes.sort().forEach(type => {
@@ -110,13 +150,16 @@ document.addEventListener('DOMContentLoaded', (event) => {
     const submittedAuditsTableContainer = document.getElementById("submittedAuditsTableContainer");
     const exportSubmittedButton = document.getElementById("exportSubmittedButton");
     const clearSubmittedLogButton = document.getElementById("clearSubmittedLogButton");
+    // Referencias DOM para Import en User Page
+    const userImportConfigButton = document.getElementById("userImportConfigButton");
+    const userImportConfigFileInput = document.getElementById("userImportConfigFile");
 
     // --- Inicialización ---
     if (dateInput) { try { dateInput.value = new Date().toISOString().split('T')[0]; } catch(e) { console.error("Failed to set interaction date:", e);} }
     if (auditDateDisplay) { try { auditDateDisplay.textContent = new Date().toLocaleDateString(); } catch(e) { console.error("Failed to set audit date:", e); auditDateDisplay.textContent = 'Error'; } }
     if (evaluatorNameInput) { const savedEvaluatorName = localStorage.getItem(EVALUATOR_NAME_KEY); if (savedEvaluatorName) { evaluatorNameInput.value = savedEvaluatorName; } evaluatorNameInput.addEventListener('input', (e) => { localStorage.setItem(EVALUATOR_NAME_KEY, e.target.value); }); }
-    if (accountSelect) populateAccountDropdown();
-    if (submittedAuditsTableContainer) displaySubmittedAudits();
+    if (accountSelect) populateAccountDropdown(); // Poblar cuentas al inicio
+    if (submittedAuditsTableContainer) displaySubmittedAudits(); // Mostrar logs guardados
     populateBehaviorDropdown(); // Poblar dropdown de behaviors
 
     // --- Listeners ---
@@ -126,6 +169,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
     if (submitButton) submitButton.addEventListener("click", submitInteraction);
     if (exportSubmittedButton) exportSubmittedButton.addEventListener("click", exportSubmittedDataToCSV);
     if (clearSubmittedLogButton) clearSubmittedLogButton.addEventListener("click", clearSubmittedAudits);
+    // Listeners para Import en User Page
+    if (userImportConfigButton) {
+        userImportConfigButton.addEventListener('click', () => {
+            userImportConfigFileInput.click(); // Disparar input oculto
+        });
+    }
+    if (userImportConfigFileInput) {
+        userImportConfigFileInput.addEventListener('change', handleConfigurationImport_User); // Usar función específica
+    }
 
 }); // --- Fin de DOMContentLoaded ---
 
@@ -147,7 +199,6 @@ function displaySubmittedAudits() {
         container.innerHTML = '<p>No audits submitted yet.</p>';
         return;
     }
-    // Cabeceras (Sentiment por paso se verá en la exportación, no en este resumen)
     let tableHTML = `<table border="1"><thead><tr><th>Submitted At</th><th>Evaluator</th><th>Int. ID</th><th>Agent</th><th>ADP</th><th>Int. Date</th><th>Agent Perf.</th><th>Account</th><th>Int. Type</th><th>Behavior</th><th>Steps</th><th>Actions</th></tr></thead><tbody>`;
     allSubmittedAudits.forEach((interaction, index) => {
         const stepsSummary = Array.isArray(interaction.steps) ? `${interaction.steps.length} steps` : 'N/A';
@@ -185,7 +236,6 @@ function loadTemplateSteps() {
     const allTemplates = getEvaluationTemplates();
     const specificTemplateSteps = allTemplates[templateKey];
 
-    // Limpiar estado anterior
     steps = [];
     Object.values(timerIntervals).forEach(clearInterval);
     timerIntervals = {};
@@ -194,25 +244,18 @@ function loadTemplateSteps() {
         specificTemplateSteps.forEach(masterStep => {
             if (masterStep && typeof masterStep.name === 'string' && typeof masterStep.category === 'string') {
                 steps.push({
-                    name: masterStep.name,
-                    category: masterStep.category,
-                    account: sessionAccount,
-                    interactionType: sessionInteractionType,
-                    elapsedTime: 0,
-                    startTime: 0,
-                    isRunning: false,
-                    sentiment: "" // Inicializar sentiment vacío
+                    name: masterStep.name, category: masterStep.category,
+                    account: sessionAccount, interactionType: sessionInteractionType,
+                    elapsedTime: 0, startTime: 0, isRunning: false, sentiment: ""
                 });
-            } else {
-                console.warn("Skipping invalid step data in template:", masterStep);
-            }
+            } else { console.warn("Skipping invalid step data:", masterStep); }
         });
         console.log("Steps populated for session:", steps);
     } else {
-        console.log(`No steps found or template is empty for key ${templateKey}`);
-        alert(`No evaluation template found for Account="${sessionAccount}", Interaction Type="${sessionInteractionType}".`);
+        console.log(`No steps found for key ${templateKey}`);
+        alert(`No template found for Account="${sessionAccount}", Interaction Type="${sessionInteractionType}".`);
     }
-    displaySteps(); // Mostrar los pasos cargados
+    displaySteps();
 }
 
 // --- Actualizar Sentiment en el Array ---
@@ -220,9 +263,7 @@ function updateSentiment(index, value) {
     if (index >= 0 && index < steps.length) {
         steps[index].sentiment = value;
         console.log(`Sentiment for step ${index} (${steps[index].name}) updated to: ${value}`);
-    } else {
-        console.warn(`Attempted to update sentiment for invalid index: ${index}`);
-    }
+    } else { console.warn(`Invalid index for sentiment update: ${index}`); }
 }
 
 
@@ -237,7 +278,6 @@ function submitInteraction() {
     const dateInput = document.getElementById("date");
     const agentTypeSelect = document.getElementById("agentType");
     const behaviorIdentifiedSelect = document.getElementById("behaviorIdentified");
-
     const evaluatorName = evaluatorNameInput?.value.trim();
     const interactionId = interactionIdInput?.value.trim();
     const agentName = agentNameInput?.value.trim();
@@ -245,65 +285,39 @@ function submitInteraction() {
     const date = dateInput?.value;
     const agentType = agentTypeSelect?.value;
     const behaviorIdentified = behaviorIdentifiedSelect?.value; // Opcional
-
-    // Validaciones Obligatorias
-    if (!evaluatorName) { alert("Please enter Evaluator Name."); return; }
-    if (!interactionId) { alert("Please enter Interaction ID."); return; }
-    if (!agentName) { alert("Please enter Agent Name."); return; }
-    if (!adp) { alert("Please enter ADP."); return; }
-    if (!date) { alert("Please select Interaction Date."); return; }
-    if (!agentType) { alert("Please select Agent Performance."); return; }
-    // La validación de behaviorIdentified fue eliminada/comentada
+    if (!evaluatorName || !interactionId || !agentName || !adp || !date || !agentType) {
+        alert("Please fill in all required basic information fields (Evaluator, Int. ID, Agent, ADP, Int. Date, Agent Perf.)."); return;
+    }
 
     // 2. Validar Contexto y Pasos
     const accountSelect = document.getElementById("accountSelect");
     const interactionTypeSelect = document.getElementById("interactionTypeSelect");
     const account = accountSelect?.value;
     const interactionType = interactionTypeSelect?.value;
-    if (!account || !interactionType) { alert("Account/Interaction Type context missing. Please load steps again."); return; }
+    if (!account || !interactionType) { alert("Account/Interaction Type missing. Please load steps again."); return; }
     if (steps.length === 0) { alert("No steps loaded or timed for this session."); return; }
 
-    // 3. Construir resultados de pasos (incluye sentiment)
+    // 3. Construir resultados de pasos
     const stepResults = [];
-    Object.values(timerIntervals).forEach(clearInterval);
-    timerIntervals = {};
-
+    Object.values(timerIntervals).forEach(clearInterval); timerIntervals = {};
     steps.forEach((step) => {
         let finalTime = step.elapsedTime;
-        if (step.isRunning && step.startTime > 0) {
-            finalTime += (Date.now() - step.startTime);
-        }
-        step.isRunning = false;
-        step.startTime = 0;
-        finalTime = Math.max(0, finalTime);
-
-        stepResults.push({
-            name: step.name,
-            category: step.category,
-            time: formatTime(finalTime),
-            rawTime: Math.floor(finalTime),
-            sentiment: step.sentiment || "" // Guardar sentiment
-        });
+        if (step.isRunning && step.startTime > 0) { finalTime += (Date.now() - step.startTime); }
+        step.isRunning = false; step.startTime = 0; finalTime = Math.max(0, finalTime);
+        stepResults.push({ name: step.name, category: step.category, time: formatTime(finalTime), rawTime: Math.floor(finalTime), sentiment: step.sentiment || "" });
     });
 
     // 4. Crear OBJETO de interacción completo
-    const interactionData = {
-        interactionId: interactionId, submittedAt: new Date().toISOString(), evaluatorName: evaluatorName,
-        agentName: agentName, adp: adp, date: date, agentType: agentType, account: account, interactionType: interactionType,
-        behaviorIdentified: behaviorIdentified,
-        steps: stepResults
-    };
+    const interactionData = { interactionId, submittedAt: new Date().toISOString(), evaluatorName, agentName, adp, date, agentType, account, interactionType, behaviorIdentified, steps: stepResults };
 
     // 5. Guardar en localStorage
-    const allSubmittedAudits = getSubmittedAudits();
-    allSubmittedAudits.push(interactionData);
-    saveSubmittedAudits(allSubmittedAudits);
+    const allSubmittedAudits = getSubmittedAudits(); allSubmittedAudits.push(interactionData); saveSubmittedAudits(allSubmittedAudits);
     console.log("Interaction submitted:", interactionData);
 
     // 6. Actualizar tabla de logs
     displaySubmittedAudits();
 
-    // 7. RESETEAR FORMULARIO (manteniendo pasos y contexto)
+    // 7. RESETEAR FORMULARIO
     console.log("Resetting form after submit (keeping steps)...");
     if(interactionIdInput) interactionIdInput.value = '';
     if(agentNameInput) agentNameInput.value = '';
@@ -311,305 +325,175 @@ function submitInteraction() {
     if(dateInput) dateInput.value = new Date().toISOString().split('T')[0];
     if(agentTypeSelect) agentTypeSelect.selectedIndex = 0;
     if(behaviorIdentifiedSelect) behaviorIdentifiedSelect.selectedIndex = 0;
-
-    // Resetear tiempos Y SENTIMENT en el array de pasos ACTUAL
-    steps.forEach(step => {
-        step.elapsedTime = 0;
-        step.startTime = 0;
-        step.isRunning = false;
-        step.sentiment = ""; // Resetear sentiment
-    });
+    steps.forEach(step => { step.elapsedTime = 0; step.startTime = 0; step.isRunning = false; step.sentiment = ""; });
     timerIntervals = {};
-
-    // Redibujar la tabla de pasos con los tiempos y selects reseteados
     displaySteps();
-
-    console.log("Form reset after submit complete (steps kept).");
+    console.log("Form reset complete.");
 }
 
 
 // --- Lógica para Borrar UNA Entrada del Log ---
 function deleteSingleInteraction(indexToDelete) {
-      console.log(`Attempting to delete interaction at index: ${indexToDelete}`);
+      console.log(`Attempting delete at index: ${indexToDelete}`);
     const allSubmittedAudits = getSubmittedAudits();
-    if (indexToDelete < 0 || indexToDelete >= allSubmittedAudits.length) {
-        console.error("Invalid index for deletion:", indexToDelete);
-        alert("Error: Could not find the entry to delete.");
-        return;
-    }
-    const entryToDelete = allSubmittedAudits[indexToDelete];
-    const confirmMsg = `Are you sure you want to delete the submitted entry?
-                      Interaction ID: ${entryToDelete.interactionId || 'N/A'}
-                      Agent: ${entryToDelete.agentName || 'N/A'}
-                      Date: ${entryToDelete.date || 'N/A'}
-                      This cannot be undone.`;
-    if (confirm(confirmMsg)) {
-        allSubmittedAudits.splice(indexToDelete, 1);
-        saveSubmittedAudits(allSubmittedAudits);
-        displaySubmittedAudits();
-        alert("Entry deleted successfully.");
-        console.log(`Deleted interaction at index: ${indexToDelete}`);
-    } else {
-        console.log("Deletion cancelled by user.");
-    }
+    if (indexToDelete < 0 || indexToDelete >= allSubmittedAudits.length) { console.error("Invalid index for deletion:", indexToDelete); alert("Error: Could not find entry."); return; }
+    const entry = allSubmittedAudits[indexToDelete];
+    if (confirm(`Delete entry for Interaction ID: ${entry.interactionId || 'N/A'}?`)) {
+        allSubmittedAudits.splice(indexToDelete, 1); saveSubmittedAudits(allSubmittedAudits); displaySubmittedAudits();
+        alert("Entry deleted."); console.log(`Deleted entry at index: ${indexToDelete}`);
+    } else { console.log("Deletion cancelled."); }
 }
 
 
 // --- Lógica de Clear Log ---
 function clearSubmittedAudits() {
-     const allSubmittedAudits = getSubmittedAudits();
-    if (allSubmittedAudits.length === 0) {
-        alert("There are no submitted audits to clear.");
-        return;
-    }
-    if (confirm(`WARNING: This will permanently delete ALL (${allSubmittedAudits.length}) submitted audit data stored in this browser. This cannot be undone. Are you sure?`)) {
-        try {
-            localStorage.removeItem(SUBMITTED_DATA_KEY);
-            console.log("Submitted audits log cleared.");
-            displaySubmittedAudits();
-            alert("Submitted audits log has been cleared.");
-        } catch (e) {
-            console.error("Error clearing submitted audits:", e);
-            alert("An error occurred while clearing the log.");
-        }
-    } else {
-        console.log("Clear log cancelled by user.");
-    }
+     const audits = getSubmittedAudits();
+    if (audits.length === 0) { alert("Log is already empty."); return; }
+    if (confirm(`WARNING: Delete ALL (${audits.length}) submitted audits? This cannot be undone.`)) {
+        try { localStorage.removeItem(SUBMITTED_DATA_KEY); console.log("Log cleared."); displaySubmittedAudits(); alert("Log cleared."); }
+        catch (e) { console.error("Error clearing log:", e); alert("Error clearing log."); }
+    } else { console.log("Clear log cancelled."); }
 }
 
 
 // --- Funciones del Cronómetro y Visualización de Pasos ---
 function displaySteps() {
-    const stepListContainer = document.getElementById("stepList");
-    if (!stepListContainer) { console.error("Step list container not found!"); return; }
-    stepListContainer.innerHTML = ''; // Limpiar
+    const container = document.getElementById("stepList");
+    if (!container) { console.error("Step list container not found!"); return; }
+    container.innerHTML = '';
 
-    if (steps.length === 0) {
-        stepListContainer.innerHTML = '<p>No steps loaded. Select Account/Interaction Type and click "Load Predefined Steps".</p>';
-        return;
-    }
+    if (steps.length === 0) { container.innerHTML = '<p>No steps loaded. Select Account/Interaction Type and click "Load Predefined Steps".</p>'; return; }
 
-    const table = document.createElement('table');
-    table.id = 'stepListTable';
-    const thead = table.createTHead();
-    const headerRow = thead.insertRow();
-    // Añadir cabecera "Sentiment"
-    ['Category', 'Step Name', 'Time', 'Actions', 'Sentiment'].forEach(headerText => {
-        const th = document.createElement('th');
-        th.textContent = headerText;
-        headerRow.appendChild(th);
-    });
+    const table = document.createElement('table'); table.id = 'stepListTable';
+    const thead = table.createTHead(); const headerRow = thead.insertRow();
+    ['Category', 'Step Name', 'Time', 'Actions', 'Sentiment'].forEach(text => { const th = document.createElement('th'); th.textContent = text; headerRow.appendChild(th); });
 
     const tbody = table.createTBody();
     steps.forEach((step, index) => {
         const row = tbody.insertRow();
         row.insertCell().textContent = step.category;
         row.insertCell().textContent = step.name;
-
-        // Celda del tiempo
-        const timeCell = row.insertCell();
-        timeCell.classList.add('time-display');
-        const timeSpan = document.createElement('span');
-        timeSpan.id = `time-${index}`;
-        timeSpan.innerHTML = formatTime(step.elapsedTime);
+        const timeCell = row.insertCell(); timeCell.classList.add('time-display');
+        const timeSpan = document.createElement('span'); timeSpan.id = `time-${index}`; timeSpan.innerHTML = formatTime(step.elapsedTime);
         timeCell.appendChild(timeSpan);
-
-        // Celda de acciones
-        const actionsCell = row.insertCell();
-        actionsCell.classList.add('actions-cell');
-        const startButton = document.createElement('button');
-        startButton.textContent = 'Start';
-        startButton.id = `start-${index}`;
-        startButton.disabled = step.isRunning;
-        startButton.onclick = () => startTimer(index);
-        actionsCell.appendChild(startButton);
-        const stopButton = document.createElement('button');
-        stopButton.textContent = 'Stop';
-        stopButton.id = `stop-${index}`;
-        stopButton.disabled = !step.isRunning;
-        stopButton.onclick = () => stopTimer(index);
-        actionsCell.appendChild(stopButton);
-
-        // Celda para Sentiment
-        const sentimentCell = row.insertCell();
-        const selectSentiment = document.createElement('select');
-        selectSentiment.id = `sentiment-${index}`;
-        selectSentiment.title = `Select sentiment for step: ${step.name}`;
-        selectSentiment.onchange = () => updateSentiment(index, selectSentiment.value);
-
-        const options = [
-            { value: "", text: "-- Select --" },
-            { value: "Positive", text: "Positive Sentiment" },
-            { value: "Neutral", text: "Neutral Sentiment" },
-            { value: "Negative", text: "Negative Sentiment" }
-        ];
-        options.forEach(optData => {
-            const option = document.createElement('option');
-            option.value = optData.value;
-            option.textContent = optData.text;
-            selectSentiment.appendChild(option);
-        });
-        selectSentiment.value = step.sentiment || ""; // Establecer valor actual
-        sentimentCell.appendChild(selectSentiment);
+        const actionsCell = row.insertCell(); actionsCell.classList.add('actions-cell');
+        const startBtn = document.createElement('button'); startBtn.textContent = 'Start'; startBtn.id = `start-${index}`; startBtn.disabled = step.isRunning; startBtn.onclick = () => startTimer(index); actionsCell.appendChild(startBtn);
+        const stopBtn = document.createElement('button'); stopBtn.textContent = 'Stop'; stopBtn.id = `stop-${index}`; stopBtn.disabled = !step.isRunning; stopBtn.onclick = () => stopTimer(index); actionsCell.appendChild(stopBtn);
+        const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset'; resetBtn.id = `reset-${index}`; resetBtn.disabled = false; resetBtn.onclick = () => resetStepTimer(index); actionsCell.appendChild(resetBtn);
+        const sentimentCell = row.insertCell(); const select = document.createElement('select'); select.id = `sentiment-${index}`; select.title = `Sentiment for ${step.name}`; select.onchange = () => updateSentiment(index, select.value);
+        [{v:"",t:"-- Select --"},{v:"Positive",t:"Positive Sentiment"},{v:"Neutral",t:"Neutral Sentiment"},{v:"Negative",t:"Negative Sentiment"}].forEach(o=>{const opt=document.createElement('option');opt.value=o.v;opt.textContent=o.t;select.appendChild(opt);});
+        select.value = step.sentiment || ""; sentimentCell.appendChild(select);
     });
-    stepListContainer.appendChild(table);
+    container.appendChild(table);
 }
 
 function startTimer(index) {
     if (index < 0 || index >= steps.length || steps[index].isRunning) return;
-
     const step = steps[index];
-    step.isRunning = true;
-    step.startTime = Date.now();
-
+    step.isRunning = true; step.startTime = Date.now();
     document.getElementById(`start-${index}`).disabled = true;
     document.getElementById(`stop-${index}`).disabled = false;
-
+    // document.getElementById(`reset-${index}`).disabled = true; // Opcional: deshabilitar reset mientras corre
     if (timerIntervals[index]) clearInterval(timerIntervals[index]);
-
     timerIntervals[index] = setInterval(() => {
-        if (!steps[index] || !steps[index].isRunning) { // Seguridad: si el paso desaparece o se detiene inesperadamente
-             clearInterval(timerIntervals[index]);
-             delete timerIntervals[index];
-             return;
-        }
+        if (!steps[index] || !steps[index].isRunning) { clearInterval(timerIntervals[index]); delete timerIntervals[index]; return; }
         const currentTime = steps[index].elapsedTime + (Date.now() - steps[index].startTime);
         const timeDisplay = document.getElementById(`time-${index}`);
-        if (timeDisplay) {
-            timeDisplay.innerHTML = formatTime(currentTime);
-        } else {
-            console.warn(`Timer display for index ${index} not found. Stopping interval.`);
-            clearInterval(timerIntervals[index]);
-            delete timerIntervals[index];
-        }
-    }, 50); // Actualizar cada 50ms
-     console.log(`Timer started for step ${index}: ${step.name}`);
+        if (timeDisplay) { timeDisplay.innerHTML = formatTime(currentTime); }
+        else { console.warn(`Timer display ${index} not found`); clearInterval(timerIntervals[index]); delete timerIntervals[index]; }
+    }, 50);
+     console.log(`Timer started step ${index}: ${step.name}`);
 }
 
 function stopTimer(index) {
-    if (index < 0 || index >= steps.length || !steps[index].isRunning) return;
-
+    if (index < 0 || index >= steps.length || !steps[index]?.isRunning) return; // Añadido check steps[index]
     const step = steps[index];
-    const endTime = Date.now();
-    const duration = endTime - step.startTime;
-
-    step.elapsedTime += duration;
-    step.isRunning = false;
-    step.startTime = 0;
-
-    if (timerIntervals[index]) {
-        clearInterval(timerIntervals[index]);
-        delete timerIntervals[index];
-    }
-
+    step.elapsedTime += (Date.now() - step.startTime);
+    step.isRunning = false; step.startTime = 0;
+    if (timerIntervals[index]) { clearInterval(timerIntervals[index]); delete timerIntervals[index]; }
     const timeDisplay = document.getElementById(`time-${index}`);
     if(timeDisplay) timeDisplay.innerHTML = formatTime(step.elapsedTime);
     document.getElementById(`start-${index}`).disabled = false;
     document.getElementById(`stop-${index}`).disabled = true;
-    console.log(`Timer stopped for step ${index}: ${step.name}. Accumulated: ${step.elapsedTime}ms`);
+    document.getElementById(`reset-${index}`).disabled = false; // Habilitar reset al parar
+    console.log(`Timer stopped step ${index}: ${step.name}. Accumulated: ${step.elapsedTime}ms`);
 }
 
+function resetStepTimer(index) {
+    if (index < 0 || index >= steps.length) { console.error("Invalid index for reset:", index); return; }
+    const step = steps[index];
+    if (!confirm(`Reset timer for step "${step.name}"? Current: ${formatTime(step.elapsedTime)}`)) return;
+    console.log(`Resetting timer step ${index}: ${step.name}`);
+    if (step.isRunning) { if (timerIntervals[index]) { clearInterval(timerIntervals[index]); delete timerIntervals[index]; } step.isRunning = false; }
+    step.elapsedTime = 0; step.startTime = 0;
+    const timeDisplay = document.getElementById(`time-${index}`);
+    if (timeDisplay) timeDisplay.innerHTML = formatTime(0);
+    document.getElementById(`start-${index}`).disabled = false;
+    document.getElementById(`stop-${index}`).disabled = true;
+    document.getElementById(`reset-${index}`).disabled = false; // O true si quieres deshabilitar si es 0
+}
+// --- FIN Funciones Cronómetro ---
 
-// --- Función de Exportación ---
+
+// --- Función de Exportación (Formato Largo) ---
 function exportSubmittedDataToCSV() {
     console.log("Exporting submitted data to CSV (long format)...");
     const allSubmittedAudits = getSubmittedAudits();
-    if (allSubmittedAudits.length === 0) {
-        alert("No submitted data to export.");
-        return;
-    }
-
-    // 1. Definir las cabeceras para el formato largo
-    const headers = [
-        "Interaction ID",
-        "Submitted At",
-        "Evaluator Name",
-        "Agent Name",
-        "ADP",
-        "Interaction Date",
-        "Agent Performance",
-        "Account",
-        "Interaction Type",
-        "Behavior Identified", // Opcional
-        "Step Category",
-        "Step Name",
-        "Step Time (ms)",
-        "Step Time (Formatted)",
-        "Step Sentiment" // Opcional
-    ];
-
-    // 2. Inicializar las filas CSV con la cabecera
+    if (allSubmittedAudits.length === 0) { alert("No submitted data to export."); return; }
+    const headers = ["Interaction ID", "Submitted At", "Evaluator Name", "Agent Name", "ADP", "Interaction Date", "Agent Performance", "Account", "Interaction Type", "Behavior Identified", "Step Category", "Step Name", "Step Time (ms)", "Step Time (Formatted)", "Step Sentiment"];
     const csvRows = [headers.map(escapeCSV).join(',')];
-
-    // 3. Iterar sobre cada auditoría y luego sobre cada paso dentro de ella
     allSubmittedAudits.forEach(audit => {
-        // Extraer la información común de la auditoría
-        const commonData = [
-            audit.interactionId || '',
-            audit.submittedAt ? new Date(audit.submittedAt).toISOString() : '', // Usar ISO para consistencia o toLocaleString() si se prefiere
-            audit.evaluatorName || '',
-            audit.agentName || '',
-            audit.adp || '',
-            audit.date || '',
-            audit.agentType || '',
-            audit.account || '',
-            audit.interactionType || '',
-            audit.behaviorIdentified || '' // Behavior general opcional
-        ];
-
-        // Verificar si hay pasos en esta auditoría
+        const common = [audit.interactionId, audit.submittedAt?new Date(audit.submittedAt).toISOString():'', audit.evaluatorName, audit.agentName, audit.adp, audit.date, audit.agentType, audit.account, audit.interactionType, audit.behaviorIdentified];
         if (Array.isArray(audit.steps) && audit.steps.length > 0) {
-            // Iterar sobre cada paso y crear una fila para él
             audit.steps.forEach(step => {
-                // Crear la fila combinando datos comunes y del paso específico
-                const stepRow = [
-                    ...commonData, // Añadir todos los datos comunes primero
-                    step.category || '',
-                    step.name || '',
-                    step.rawTime !== undefined ? step.rawTime : '', // Tiempo en ms
-                    step.time || '', // Tiempo formateado
-                    step.sentiment || '' // Sentiment específico del paso opcional
-                ];
-
-                // Escapar y unir la fila, luego añadirla a las filas CSV
-                csvRows.push(stepRow.map(escapeCSV).join(','));
+                const row = [...common, step.category, step.name, step.rawTime??'', step.time, step.sentiment||''];
+                csvRows.push(row.map(escapeCSV).join(','));
             });
-        } else {
-            // Opcional: ¿Qué hacer si una auditoría no tiene pasos?
-            // Opción A (Actual): No añadir ninguna fila para esta auditoría (ya que no hay pasos)
-            // Opción B: Añadir una fila con datos comunes y campos de paso vacíos
-            /*
-            const noStepRow = [
-                ...commonData,
-                '', // Step Category
-                '', // Step Name
-                '', // Step Time (ms)
-                '', // Step Time (Formatted)
-                ''  // Step Sentiment
-            ];
-            csvRows.push(noStepRow.map(escapeCSV).join(','));
-            */
-            console.log(`Audit ${audit.interactionId} has no steps, skipping row generation.`);
-        }
-    }); // Fin del forEach para auditorías
-
-    // 4. Crear y descargar el archivo CSV (esta parte no cambia)
+        } else { console.log(`Audit ${audit.interactionId} has no steps, skipping.`); }
+    });
     const csvString = csvRows.join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `submitted_audits_steps_${timestamp}.csv`); // Nombre de archivo diferente
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const url = URL.createObjectURL(blob); const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        link.setAttribute('href', url); link.setAttribute('download', `submitted_audits_steps_${ts}.csv`);
+        link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
         console.log("CSV export initiated (long format).");
-    } else {
-        alert("CSV export is not supported in your browser.");
-    }
+    } else { alert("CSV export not supported in your browser."); }
 }
-// --- FIN DE FUNCIONES ---
+// --- FIN Exportación ---
+
+
+// --- Función de Importación para User Page ---
+function handleConfigurationImport_User(event) {
+    console.log("Handling configuration import on user page...");
+    const file = event.target.files[0];
+    if (!file) { console.log("No file selected."); return; }
+    if (!file.name.toLowerCase().endsWith('.json') || file.type !== 'application/json') { alert("Please select a valid JSON file (.json)."); event.target.value = null; return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const importedConfig = JSON.parse(e.target.result);
+            if (typeof importedConfig !== 'object' || importedConfig === null || typeof importedConfig.templates !== 'object' || importedConfig.templates === null || Array.isArray(importedConfig.templates) || !Array.isArray(importedConfig.behaviors)) {
+                throw new Error("Invalid file structure. Expected 'templates' (object) and 'behaviors' (array).");
+            }
+            if (!confirm("Importing this file will OVERWRITE current templates and behaviors. Proceed?")) { console.log("Import cancelled."); event.target.value = null; return; }
+            const tSaved = saveEvaluationTemplates(importedConfig.templates);
+            const bSaved = saveBehaviors(importedConfig.behaviors);
+            if (tSaved && bSaved) {
+                console.log("Config imported successfully."); alert("Configuration imported successfully! Dropdowns updated.");
+                populateAccountDropdown(); // Repopular todo
+                populateBehaviorDropdown();
+                steps = []; // Limpiar pasos actuales
+                Object.values(timerIntervals).forEach(clearInterval); timerIntervals = {};
+                displaySteps(); // Mostrar mensaje inicial de pasos
+            } else { throw new Error("Failed to save imported config."); }
+        } catch (error) { console.error("Error importing file:", error); alert(`Error importing: ${error.message}`);
+        } finally { event.target.value = null; } // Reset input
+    };
+    reader.onerror = (e) => { console.error("Error reading file:", e); alert("Error reading file."); event.target.value = null; };
+    reader.readAsText(file);
+}
+// --- FIN Importación User ---
+
+// --- FIN script.js ---

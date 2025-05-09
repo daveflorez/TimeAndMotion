@@ -8,12 +8,12 @@
       <style>
          /* Estilos básicos generales */
          body { font-family: sans-serif; line-height: 1.5; margin: 20px; }
-         h1, h2 { margin-bottom: 0.5em; color: #333; }
+         h1, h2, h3 { margin-bottom: 0.5em; color: #333; }
          hr { border: none; border-top: 1px solid #eee; margin: 20px 0; }
-         button { padding: 6px 12px; font-size: 0.9em; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #f7f7f7; margin-right: 5px;}
+         button { padding: 6px 12px; font-size: 0.9em; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background-color: #f7f7f7; margin-right: 5px; margin-bottom: 5px; }
          button:disabled { cursor: not-allowed; opacity: 0.6; }
          button:hover:not(:disabled) { background-color: #e9e9e9; }
-         input[type="text"], input[type="date"], select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; box-sizing: border-box; } /* Added box-sizing */
+         input[type="text"], input[type="date"], select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em; box-sizing: border-box; }
          label { margin-bottom: 3px; font-weight: bold; font-size: 0.85em; color: #333; display: block; }
 
          /* Contenedor para Basic Information */
@@ -24,42 +24,35 @@
          /* Contenedor para Session Context */
           #sessionCtx { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: flex-end; padding: 15px; border: 1px solid #e0e0e0; background-color: #fdfdfd; border-radius: 5px; margin-bottom: 15px; }
           #sessionCtx > div { display: flex; flex-direction: column; }
-          #sessionCtx button { margin-top: 22px; /* Alinea botón con inputs */ }
+          #sessionCtx button { margin-top: 22px; }
 
-         /* Contenedor Tabla Pasos Activos */
+         /* Tabla de Pasos */
          .steps-table-container { margin-top: 10px; }
          #stepListTable { width: 100%; border-collapse: collapse; table-layout: fixed; }
          #stepListTable th, #stepListTable td {
-            border: 1px solid #ddd;
-            padding: 8px 10px;
-            text-align: left;
-            vertical-align: middle; /* Alinear verticalmente contenido de celdas */
-            word-wrap: break-word;
+            border: 1px solid #ddd; padding: 8px 10px; vertical-align: middle; word-wrap: break-word;
          }
          #stepListTable th { background-color: #f2f2f2; font-size: 0.9em; }
-         /* --- AJUSTAR ANCHOS DE COLUMNA --- */
-         #stepListTable th:nth-child(1) { width: 18%; } /* Category */
-         #stepListTable th:nth-child(2) { width: 30%; } /* Step Name */
-         #stepListTable th:nth-child(3) { width: 12%; text-align: right; } /* Time */
-         #stepListTable th:nth-child(4) { width: 20%; text-align: center;} /* Actions */
-         #stepListTable th:nth-child(5) { width: 20%; } /* Sentiment */
-         /* --------------------------------- */
+         #stepListTable th:nth-child(1) { width: 18%; text-align: left; } /* Category */
+         #stepListTable th:nth-child(2) { width: 30%; text-align: left; } /* Step Name */
+         #stepListTable th:nth-child(3) { width: 12%; text-align: center; } /* Time */
+         #stepListTable th:nth-child(4) { width: 25%; text-align: center;} /* Actions */
+         #stepListTable th:nth-child(5) { width: 15%; text-align: left; } /* Sentiment */
 
-         #stepListTable .time-display { font-family: 'Courier New', Courier, monospace; font-weight: bold; font-size: 1.1em; display: inline-block; min-width: 80px; text-align: right; font-variant-numeric: tabular-nums; }
-         #stepListTable .actions-cell { white-space: nowrap; text-align: center; /* Centrar botones */ }
-         #stepListTable button { margin: 0 3px; padding: 4px 10px; min-width: 60px; text-align: center; font-size: 0.9em; }
+         /* Estilo Columna Time */
+         #stepListTable td:nth-child(3) { display: flex; justify-content: center; align-items: center; padding: 0; }
+         #stepListTable .time-display { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.1em; font-variant-numeric: tabular-nums; padding: 0 2px; line-height: 2.55em; }
 
-         /* --- ESTILO PARA SELECT DE SENTIMENT --- */
-         #stepListTable select {
-             width: 100%; /* Ocupar el ancho de la celda */
-             padding: 4px;
-             font-size: 0.9em;
-             border: 1px solid #ccc; /* Borde sutil */
-             border-radius: 4px;
-             background-color: #fff; /* Fondo blanco */
-             box-sizing: border-box; /* Incluir padding en el ancho */
-         }
-         /* -------------------------------------- */
+         /* Estilo Otras Celdas */
+         #stepListTable td:nth-child(1), #stepListTable td:nth-child(2), #stepListTable td:nth-child(5) { text-align: left; }
+         #stepListTable td:nth-child(4) { text-align: center; } /* Actions Cell */
+
+         /* Estilo Actions Cell y Botones */
+         #stepListTable .actions-cell { white-space: nowrap; text-align: center; }
+         #stepListTable .actions-cell button { margin: 0 2px; padding: 4px 8px; min-width: 55px; font-size: 0.85em; }
+
+         /* Estilo Select Sentiment */
+         #stepListTable select { width: 100%; padding: 4px; font-size: 0.9em; border: 1px solid #ccc; border-radius: 4px; background-color: #fff; box-sizing: border-box; }
 
          /* Contenedor Tabla Logs */
          #submittedAuditsSection { margin-top: 20px; }
@@ -70,14 +63,53 @@
          #submittedAuditsSection button { margin-top: 10px; margin-right: 5px; }
          .action-cell { white-space: nowrap; }
 
+         /* Sección Import en User Page */
+         #userImportSection {
+             margin-top: 15px;      /* Ajustar margen superior */
+             margin-bottom: 20px;   /* Añadir margen inferior */
+             padding: 15px;
+             border: 1px dashed #ccc;
+             background-color: #fafafa;
+             border-radius: 5px;
+         }
+          #userImportSection h3 {
+             margin-top: 0;
+             margin-bottom: 10px;
+             font-size: 1.1em; /* Tamaño un poco más pequeño que h2 */
+          }
+         #userImportSection button {
+             background-color: #28a745; /* Verde */
+             color: white;
+             border-color: #218838;
+         }
+         #userImportSection button:hover:not(:disabled){
+             background-color: #218838;
+         }
+         #userImportSection p {
+            font-size: 0.85em;
+            margin-top: 8px;
+            color: #555;
+         }
+
          /* Footer link */
-         .footer-link { margin-top: 30px; display: block; }
+         .footer-link { margin-top: 30px; display: block; text-align: center;}
      </style>
  </head>
  <body>
      <h1>Time and Motion Study</h1>
 
-     <h2>Basic Information</h2>
+     <!-- ***** SECCIÓN PARA IMPORTAR CONFIG MOVIDA AQUÍ ***** -->
+     <div id="userImportSection">
+         <h3>Import Template</h3>
+         <button id="userImportConfigButton">Import Templates & Behaviors (JSON)</button>
+         <input type="file" id="userImportConfigFile" accept=".json" style="display: none;">
+         <p>Importing will overwrite templates and behaviors stored in this browser.</p>
+     </div>
+     <!-- ************************************************* -->
+
+     <hr style="margin-top: 25px; margin-bottom: 25px;"> <!-- Añadir un separador visual -->
+
+     <h2>Interaction Details</h2>
      <div id="basicInfoContainer">
          <div><label for="evaluatorName">Evaluator Name:</label><input type="text" id="evaluatorName" placeholder="Your Name"></div>
          <div><label for="interactionId">Interaction ID:</label><input type="text" id="interactionId" placeholder="Unique Interaction ID"></div>
@@ -96,7 +128,7 @@
      </div>
 
       <div id="sessionCtx">
-         <h2>Session Context</h2>
+         <h2>Interaction Selector</h2>
           <div><label for="accountSelect">Account:</label><select id="accountSelect"><option value="">-- Select Account --</option></select></div>
           <div><label for="interactionTypeSelect">Interaction Type:</label><select id="interactionTypeSelect" disabled><option value="">-- Select Interaction Type --</option></select></div>
           <div><button id="loadStepsButton" disabled>Load Predefined Steps</button></div>
@@ -104,7 +136,7 @@
      <hr>
 
      <div>
-         <h2>Steps for this Session</h2>
+         <h2>Evaluate Interaction Steps</h2>
          <div id="stepList" class="steps-table-container">
               <p>Please select Account and Interaction Type, then click "Load Predefined Steps".</p>
               <!-- La tabla de pasos se generará aquí por JS -->
@@ -124,8 +156,9 @@
           <button id="clearSubmittedLogButton" disabled>Clear Submitted Log</button>
      </div>
 
+
       <p class="footer-link"><a href="admin.html">Go to Admin Configuration</a></p>
 
-     <script src="script.js"></script>
+     <script src="script.js"></script> <!-- Asegúrate que el nombre del script es correcto -->
  </body>
  </html>
